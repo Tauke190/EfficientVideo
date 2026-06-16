@@ -1,0 +1,3 @@
+[submodule "lavis/models/residualvit"]
+	path = lavis/models/residualvit
+	url = https://github.com/Soldelli/residualvit.git
