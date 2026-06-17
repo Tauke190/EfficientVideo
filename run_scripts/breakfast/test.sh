@@ -20,11 +20,12 @@ python -m torch.distributed.run --nproc_per_node=1 \
     run.max_epoch 20 \
     run.num_beams 5 \
     run.batch_size_train 16 \
-    run.batch_size_eval 16 \
+    run.batch_size_eval 8 \
     run.accum_grad_iters 1 \
     run.num_workers 2 \
     run.seed 42 \
     run.evaluate True \
+    run.distributed False \
     run.report_metric True \
     run.prefix test \
     run.resume_ckpt_path ${checkpoint_path}
