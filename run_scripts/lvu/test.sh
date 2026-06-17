@@ -1,7 +1,7 @@
 
-checkpoint_path="checkpoints/lmsys/vicuna-7b-v1.1"
+checkpoint_path="/home/av354855/EfficientVideo/checkpoints/lmsys/vicuna-7b-v1.1"
 
-torchrun --nproc_per_node=1 \
+python -m torch.distributed.run --nproc_per_node=1 \
     --master_port=34653 \
     train.py \
     --cfg-path lavis/projects/malmm/cls_lvu.yaml \
@@ -32,4 +32,3 @@ torchrun --nproc_per_node=1 \
     run.report_metric True \
     run.prefix test \
     run.resume_ckpt_path ${checkpoint_path}
-
