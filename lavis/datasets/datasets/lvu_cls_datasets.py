@@ -54,6 +54,15 @@ class LVUCLSDataset(VideoQADataset):
         self.data_list = list(self.annotation.keys())
         self.data_list.sort()
 
+        # Filter out missing videos and track skipped items
+        original_len = len(self.data_list)
+        self.data_list = [vid for vid in self.data_list if self._video_exists(self.annotation[vid]['video_id'])]
+        self.skipped_count = original_len - len(self.data_list)
+        if self.skipped_count > 0:
+            import logging
+            logger = logging.getLogger("lavis.datasets")
+            logger.info(f"Skipped {self.skipped_count} missing video files out of {original_len} samples")
+
         self.history = history
         self.num_frames = num_frames
         self.vis_processor = vis_processor
@@ -85,6 +94,13 @@ class LVUCLSDataset(VideoQADataset):
             "image_id": video_start_id,
             "question_id": video_start_id,
         }
+
+    def _video_exists(self, video_id):
+        for ext in ('.mp4', '.mkv', '.avi', '.webm'):
+            path = os.path.join(self.vis_root, video_id + ext)
+            if os.path.exists(path):
+                return True
+        return False
 
     def _find_video_path(self, video_id):
         for ext in ('.mp4', '.mkv', '.avi', '.webm'):

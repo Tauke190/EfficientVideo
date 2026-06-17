@@ -25,7 +25,7 @@ python -m torch.distributed.run --nproc_per_node=1 \
     run.batch_size_train 16 \
     run.batch_size_eval 16 \
     run.accum_grad_iters 1 \
-    run.num_workers 12 \
+    run.num_workers 2 \
     run.seed 42 \
     run.evaluate True \
     run.valid_splits "['test']" \
