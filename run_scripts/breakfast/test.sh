@@ -1,6 +1,7 @@
 
-checkpoint_path=$1
-torchrun --nproc_per_node=4 \
+checkpoint_path="/home/av354855/EfficientVideo/checkpoints/saved_model/LVU/way_speaking/checkpoint_best.pth"
+
+python -m torch.distributed.run --nproc_per_node=1 \
     --master_port=34650 \
     train.py \
     --cfg-path lavis/projects/malmm/cls_breakfast.yaml \
