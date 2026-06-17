@@ -21,4 +21,4 @@ datasets:
           url:  coin/annotation/COIN.json
           storage:  coin/annotation/COIN.json
       videos:
-        storage: coin/frames
+        storage: /home/c3-0/datasets/COIN/videos

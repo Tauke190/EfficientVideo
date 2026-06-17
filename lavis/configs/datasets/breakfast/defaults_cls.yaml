@@ -21,4 +21,4 @@ datasets:
           url:  breakfast/annotation/val.json
           storage:  breakfast/annotation/val.json
       videos:
-        storage: breakfast/frames
+        storage: /squash/Breakfast_priyank/Breakfast/videos

@@ -8,14 +8,16 @@
 import os
 import json
 import re
-from PIL import Image
 
+import decord
+from decord import VideoReader
 import pandas as pd
 import numpy as np
 import torch
-from torchvision.transforms.functional import pil_to_tensor
 
 from lavis.datasets.datasets.video_vqa_datasets import VideoQADataset
+
+decord.bridge.set_bridge("torch")
 
 class LVUCLSDataset(VideoQADataset):
     def __init__(self, vis_processor, text_processor, vis_root, ann_paths, 
@@ -63,16 +65,15 @@ class LVUCLSDataset(VideoQADataset):
         start_time = self.annotation[video_start_id]['start']
         end_time = min(self.annotation[video_start_id]['start'] + self.history - 1, self.annotation[video_start_id]['duration'])
 
-        start_frame_index = int(start_time * self.fps)
-        end_frame_index = min(int(end_time * self.fps), self.annotation[video_start_id]['video_length'] - 1)
+        video_id = self.annotation[video_start_id]['video_id']
+        video_path = self._find_video_path(video_id)
+        vr = VideoReader(uri=video_path)
+        fps = vr.get_avg_fps()
+        start_frame_index = int(start_time * fps)
+        end_frame_index = min(int(end_time * fps), len(vr) - 1)
         selected_frame_index = np.rint(np.linspace(start_frame_index, end_frame_index, self.num_frames)).astype(int).tolist()
-        # print(start_frame_index, end_frame_index, selected_frame_index, start_time, end_time)
-        frame_list = []
-        for frame_index in selected_frame_index:
-            frame = Image.open(os.path.join(self.vis_root, self.annotation[video_start_id]['video_id'], "frame{:06d}.jpg".format(frame_index + 1))).convert("RGB")
-            frame = pil_to_tensor(frame).to(torch.float32)
-            frame_list.append(frame)
-        video = torch.stack(frame_list, dim=1)
+        # (T, H, W, C) -> (C, T, H, W)
+        video = vr.get_batch(selected_frame_index).permute(3, 0, 1, 2).float()
         video = self.vis_processor(video)
 
         text_input = self.text_processor(f'what is the {self.task} of the movie?')
@@ -84,6 +85,13 @@ class LVUCLSDataset(VideoQADataset):
             "image_id": video_start_id,
             "question_id": video_start_id,
         }
+
+    def _find_video_path(self, video_id):
+        for ext in ('.mp4', '.mkv', '.avi', '.webm'):
+            path = os.path.join(self.vis_root, video_id + ext)
+            if os.path.exists(path):
+                return path
+        raise FileNotFoundError(f"No video file found for {video_id} under {self.vis_root}")
 
     def __len__(self):
         return len(self.data_list)
@@ -101,16 +109,15 @@ class LVUCLSEvalDataset(LVUCLSDataset):
         start_time = self.annotation[video_start_id]['start']
         end_time = min(self.annotation[video_start_id]['start'] + self.history - 1, self.annotation[video_start_id]['duration'])
 
-        start_frame_index = int(start_time * self.fps)
-        end_frame_index = min(int(end_time * self.fps), self.annotation[video_start_id]['video_length'] - 1)
+        video_id = self.annotation[video_start_id]['video_id']
+        video_path = self._find_video_path(video_id)
+        vr = VideoReader(uri=video_path)
+        fps = vr.get_avg_fps()
+        start_frame_index = int(start_time * fps)
+        end_frame_index = min(int(end_time * fps), len(vr) - 1)
         selected_frame_index = np.rint(np.linspace(start_frame_index, end_frame_index, self.num_frames)).astype(int).tolist()
-        # print(start_frame_index, end_frame_index, selected_frame_index, start_time, end_time)
-        frame_list = []
-        for frame_index in selected_frame_index:
-            frame = Image.open(os.path.join(self.vis_root, self.annotation[video_start_id]['video_id'], "frame{:06d}.jpg".format(frame_index + 1))).convert("RGB")
-            frame = pil_to_tensor(frame).to(torch.float32)
-            frame_list.append(frame)
-        video = torch.stack(frame_list, dim=1)
+        # (T, H, W, C) -> (C, T, H, W)
+        video = vr.get_batch(selected_frame_index).permute(3, 0, 1, 2).float()
         video = self.vis_processor(video)
 
         text_input = self.text_processor(f'what is the {self.task} of the movie?')

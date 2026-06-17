@@ -24,6 +24,6 @@ datasets:
           url: https://storage.googleapis.com/sfr-vision-language-research/LAVIS/datasets/msrvtt/train_ans2label.json
           storage: msrvtt/annotation/qa_ans2label.json
       videos:
-        storage: msrvtt/frames
+        storage: home/c3-0/datasets/MSRVTT/MSRVTT/videos/all
 
       instance_id_key: question_id

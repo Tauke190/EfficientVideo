@@ -21,4 +21,4 @@ datasets:
           url:  lvu/annotation/test.json
           storage:  lvu/annotation/test.json
       videos:
-        storage: lvu/frames
+        storage: /home/c3-0/datasets/LVU/videos

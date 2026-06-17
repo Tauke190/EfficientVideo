@@ -1,5 +1,5 @@
 
-checkpoint_path="checkpoints/lmsys/vicuna-7b-v1.5"
+checkpoint_path="checkpoints/lmsys/vicuna-7b-v1.1"
 
 torchrun --nproc_per_node=1 \
     --master_port=34653 \
@@ -15,6 +15,7 @@ torchrun --nproc_per_node=1 \
     model.freeze_vit True \
     model.memory_bank_length 20 \
     model.num_frames 100 \
+    datasets.lvu_cls.num_frames 100 \
     datasets.lvu_cls.history 100 \
     datasets.lvu_cls.task relationship \
     datasets.lvu_cls.stride 20 \
