@@ -1,14 +1,16 @@
 
-checkpoint_path=$1
-torchrun --nproc_per_node=4 \
+checkpoint_path="/home/av354855/EfficientVideo/checkpoints/saved_model/MSRVTT/checkpoint_best.pth"
+
+python -m torch.distributed.run --nproc_per_node=1 \
     --master_port=34650 \
     train.py \
     --cfg-path lavis/projects/malmm/qa_msrvtt.yaml \
     --options \
     model.arch blip2_vicuna_instruct \
     model.model_type vicuna7b \
-    model.load_finetuned False \
+    model.load_finetuned True \
     model.load_pretrained True \
+    model.finetuned ${checkpoint_path} \
     model.num_query_token 32 \
     model.vit_precision fp16 \
     model.freeze_vit True \
@@ -20,7 +22,7 @@ torchrun --nproc_per_node=4 \
     run.batch_size_train 32 \
     run.batch_size_eval 32 \
     run.accum_grad_iters 1 \
-    run.num_workers 12 \
+    run.num_workers 2 \
     run.seed 42 \
     run.evaluate True \
     run.valid_splits "['val', 'test']" \
