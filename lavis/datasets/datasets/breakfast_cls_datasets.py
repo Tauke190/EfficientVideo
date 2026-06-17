@@ -38,14 +38,7 @@ class BreakfastCLSDataset(VideoQADataset):
 
         self.video_id_list = list(self.annotation.keys())
         self.video_id_list.sort()
-
-        # Filter out missing videos and track skipped items
-        original_len = len(self.video_id_list)
-        self.video_id_list = [vid for vid in self.video_id_list if self._video_exists(vid)]
-        skipped = original_len - len(self.video_id_list)
-        if skipped > 0:
-            logger = logging.getLogger("lavis.datasets")
-            logger.info(f"Skipped {skipped} missing video files out of {original_len} samples")
+        self.skipped_count = 0
 
         self.num_frames = num_frames
         self.vis_processor = vis_processor
@@ -80,7 +73,15 @@ class BreakfastCLSDataset(VideoQADataset):
         video_id = self.video_id_list[index]
         ann = self.annotation[video_id]
 
-        video_path = self._find_video_path(video_id)
+        try:
+            video_path = self._find_video_path(video_id)
+        except FileNotFoundError:
+            self.skipped_count += 1
+            logging.getLogger("lavis.datasets").warning(
+                f"Skipped missing video {video_id} (total skipped: {self.skipped_count})"
+            )
+            return self.__getitem__((index + 1) % len(self))
+
         vr = VideoReader(uri=video_path)
         total_frames = len(vr)
 
@@ -117,7 +118,15 @@ class BreakfastCLSEvalDataset(BreakfastCLSDataset):
         video_id = self.video_id_list[index]
         ann = self.annotation[video_id]
 
-        video_path = self._find_video_path(video_id)
+        try:
+            video_path = self._find_video_path(video_id)
+        except FileNotFoundError:
+            self.skipped_count += 1
+            logging.getLogger("lavis.datasets").warning(
+                f"Skipped missing video {video_id} (total skipped: {self.skipped_count})"
+            )
+            return self.__getitem__((index + 1) % len(self))
+
         vr = VideoReader(uri=video_path)
         total_frames = len(vr)
 
