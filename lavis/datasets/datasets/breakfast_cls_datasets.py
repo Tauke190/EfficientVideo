@@ -82,7 +82,7 @@ class BreakfastCLSDataset(VideoQADataset):
             )
             return self.__getitem__((index + 1) % len(self))
 
-        vr = VideoReader(uri=video_path)
+        vr = VideoReader(uri=video_path, ctx=decord.gpu(0))
         total_frames = len(vr)
 
         # Random segment sampling (train)
@@ -127,7 +127,7 @@ class BreakfastCLSEvalDataset(BreakfastCLSDataset):
             )
             return self.__getitem__((index + 1) % len(self))
 
-        vr = VideoReader(uri=video_path)
+        vr = VideoReader(uri=video_path, ctx=decord.gpu(0))
         total_frames = len(vr)
 
         # Uniform frame sampling (eval)

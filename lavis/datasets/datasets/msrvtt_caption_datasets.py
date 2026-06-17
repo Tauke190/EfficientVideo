@@ -7,17 +7,16 @@
 
 import os
 import json
-import re
-from PIL import Image
+import logging
 
-import pandas as pd
+import decord
+from decord import VideoReader
 import numpy as np
 import torch
-from torchvision.transforms.functional import pil_to_tensor
 
 from lavis.datasets.datasets.video_caption_datasets import VideoCaptionDataset
-from lavis.datasets.data_utils import load_video
-import pdb
+
+decord.bridge.set_bridge("torch")
 
 class MSRVTTCapDataset(VideoCaptionDataset):
     def __init__(self, vis_processor, text_processor, vis_root, ann_paths, num_frames, prompt='', split='train'):
@@ -29,37 +28,48 @@ class MSRVTTCapDataset(VideoCaptionDataset):
         self.video_id_list = list(self.annotation.keys())
         self.video_id_list.sort()
         self.fps = 10
+        self.skipped_count = 0
 
         self.num_frames = num_frames
         self.vis_processor = vis_processor
         self.text_processor = text_processor
         self.prompt = prompt
-        # self._add_instance_ids()
-        # pdb.set_trace()
+
+    def _find_video_path(self, video_id):
+        for ext in ('.mp4', '.mkv', '.avi', '.webm'):
+            path = os.path.join(self.vis_root, video_id + ext)
+            if os.path.exists(path):
+                return path
+        raise FileNotFoundError(f"No video file found for {video_id} under {self.vis_root}")
 
     def __getitem__(self, index):
         video_id = self.video_id_list[index]
         ann = self.annotation[video_id]
+        video_name = ann['video']
 
-        # Divide the range into num_frames segments and select a random index from each segment
-        segment_list = np.linspace(0, ann['frame_length'], self.num_frames + 1, dtype=int)
-        segment_start_list = segment_list[:-1]
-        segment_end_list = segment_list[1:]
+        try:
+            video_path = self._find_video_path(video_name)
+        except FileNotFoundError:
+            self.skipped_count += 1
+            logging.getLogger("lavis.datasets").warning(
+                f"Skipped missing video {video_name} (total skipped: {self.skipped_count})"
+            )
+            return self.__getitem__((index + 1) % len(self))
+
+        vr = VideoReader(uri=video_path, ctx=decord.gpu(0))
+        total_frames = len(vr)
+
+        # Random segment sampling (train)
+        segment_list = np.linspace(0, total_frames, self.num_frames + 1, dtype=int)
         selected_frame_index = []
-        for start, end in zip(segment_start_list, segment_end_list):
+        for start, end in zip(segment_list[:-1], segment_list[1:]):
             if start == end:
                 selected_frame_index.append(start)
             else:
                 selected_frame_index.append(np.random.randint(start, end))
 
-        frame_list = []
-        for frame_index in selected_frame_index:
-            frame = Image.open(os.path.join(self.vis_root, ann['video'], "frame{:06d}.jpg".format(frame_index + 1))).convert("RGB")
-            frame = pil_to_tensor(frame).to(torch.float32)
-            frame_list.append(frame)
-        video = torch.stack(frame_list, dim=1)
+        video = vr.get_batch(selected_frame_index).permute(3, 0, 1, 2).float()
         video = self.vis_processor(video)
-        # print(selected_frame_index, video.shape)
 
         text_input = self.prompt
         caption = self.text_processor.pre_caption(ann["caption"])
@@ -71,7 +81,7 @@ class MSRVTTCapDataset(VideoCaptionDataset):
             "prompt": self.prompt,
             "image_id": ann["video"],
         }
-        
+
     def __len__(self):
         return len(self.video_id_list)
 
@@ -82,16 +92,24 @@ class MSRVTTCapEvalDataset(MSRVTTCapDataset):
     def __getitem__(self, index):
         video_id = self.video_id_list[index]
         ann = self.annotation[video_id]
+        video_name = ann['video']
 
-        selected_frame_index = np.rint(np.linspace(0, ann['frame_length']-1, self.num_frames)).astype(int).tolist()
-        frame_list = []
-        for frame_index in selected_frame_index:
-            frame = Image.open(os.path.join(self.vis_root, ann['video'], "frame{:06d}.jpg".format(frame_index + 1))).convert("RGB")
-            frame = pil_to_tensor(frame).to(torch.float32)
-            frame_list.append(frame)
-        video = torch.stack(frame_list, dim=1)
+        try:
+            video_path = self._find_video_path(video_name)
+        except FileNotFoundError:
+            self.skipped_count += 1
+            logging.getLogger("lavis.datasets").warning(
+                f"Skipped missing video {video_name} (total skipped: {self.skipped_count})"
+            )
+            return self.__getitem__((index + 1) % len(self))
+
+        vr = VideoReader(uri=video_path, ctx=decord.gpu(0))
+        total_frames = len(vr)
+
+        # Uniform frame sampling (eval)
+        selected_frame_index = np.rint(np.linspace(0, total_frames - 1, self.num_frames)).astype(int).tolist()
+        video = vr.get_batch(selected_frame_index).permute(3, 0, 1, 2).float()
         video = self.vis_processor(video)
-        # print(selected_frame_index, video.shape)
 
         text_input = self.prompt
         caption = self.text_processor.pre_caption(ann["caption"])

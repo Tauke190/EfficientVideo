@@ -76,7 +76,7 @@ class LVUCLSDataset(VideoQADataset):
 
         video_id = self.annotation[video_start_id]['video_id']
         video_path = self._find_video_path(video_id)
-        vr = VideoReader(uri=video_path)
+        vr = VideoReader(uri=video_path, ctx=decord.gpu(0))
         fps = vr.get_avg_fps()
         start_frame_index = int(start_time * fps)
         end_frame_index = min(int(end_time * fps), len(vr) - 1)
@@ -127,7 +127,7 @@ class LVUCLSEvalDataset(LVUCLSDataset):
 
         video_id = self.annotation[video_start_id]['video_id']
         video_path = self._find_video_path(video_id)
-        vr = VideoReader(uri=video_path)
+        vr = VideoReader(uri=video_path, ctx=decord.gpu(0))
         fps = vr.get_avg_fps()
         start_frame_index = int(start_time * fps)
         end_frame_index = min(int(end_time * fps), len(vr) - 1)
