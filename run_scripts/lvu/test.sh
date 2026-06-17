@@ -1,5 +1,5 @@
 
-checkpoint_path="/home/av354855/EfficientVideo/checkpoints/lmsys/vicuna-7b-v1.1"
+checkpoint_path="/home/av354855/EfficientVideo/checkpoints/saved_model/LVU/relationship/checkpoint_best.pth"
 
 python -m torch.distributed.run --nproc_per_node=1 \
     --master_port=34653 \
@@ -8,8 +8,9 @@ python -m torch.distributed.run --nproc_per_node=1 \
     --options \
     model.arch blip2_vicuna_instruct \
     model.model_type vicuna7b \
-    model.load_finetuned False \
+    model.load_finetuned True \
     model.load_pretrained True \
+    model.finetuned ${checkpoint_path} \
     model.num_query_token 32 \
     model.vit_precision fp16 \
     model.freeze_vit True \
